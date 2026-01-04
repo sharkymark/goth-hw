@@ -1,0 +1,271 @@
+package templates
+
+import (
+	"fmt"
+	"regexp"
+	"github.com/markmilligan/goth-hw/internal/salesforce"
+)
+
+type ObjectPageData struct {
+	ObjectType        salesforce.ObjectType
+	Fields            []salesforce.ObjectField
+	Records           []map[string]any
+	Filters           map[string]string
+	Page              int
+	PageSize          int
+	TotalSize         int
+	InstanceURL       string
+	NewLeadsOnly      bool
+	SortField         string
+	SortDir           string
+	IncludeClosedLost bool
+	IncludeClosedWon  bool
+}
+
+templ ObjectPage(data ObjectPageData) {
+	@Layout(pluralize(string(data.ObjectType))) {
+		<div class="space-y-4">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-bold">{ pluralize(string(data.ObjectType)) }</h1>
+				if data.ObjectType == salesforce.ObjectLead {
+					<label class="flex items-center gap-2 text-sm">
+						<input
+							type="checkbox"
+							name="newLeadsOnly"
+							class="object-filter"
+							if data.NewLeadsOnly {
+								checked
+							}
+							hx-get={ "/objects/" + string(data.ObjectType) }
+							hx-target="#object-table-container"
+							hx-include=".object-filter"
+						/>
+						New Leads Only
+					</label>
+				}
+				if data.ObjectType == salesforce.ObjectOpportunity {
+					<div class="flex items-center gap-4">
+						<label class="flex items-center gap-2 text-sm">
+							<input
+								type="checkbox"
+								name="includeClosedLost"
+								class="object-filter"
+								if data.IncludeClosedLost {
+									checked
+								}
+								hx-get={ "/objects/" + string(data.ObjectType) }
+								hx-target="#object-table-container"
+								hx-include=".object-filter"
+							/>
+							Closed Lost
+						</label>
+						<label class="flex items-center gap-2 text-sm">
+							<input
+								type="checkbox"
+								name="includeClosedWon"
+								class="object-filter"
+								if data.IncludeClosedWon {
+									checked
+								}
+								hx-get={ "/objects/" + string(data.ObjectType) }
+								hx-target="#object-table-container"
+								hx-include=".object-filter"
+							/>
+							Closed Won
+						</label>
+					</div>
+				}
+			</div>
+			<div id="object-table-container">
+				@ObjectTable(data)
+			</div>
+		</div>
+	}
+}
+
+templ ObjectTable(data ObjectPageData) {
+	<input type="hidden" name="sortField" value={ data.SortField } class="object-filter"/>
+	<input type="hidden" name="sortDir" value={ data.SortDir } class="object-filter"/>
+	<div class="overflow-x-auto">
+		<table class="w-full border-collapse bg-white">
+			<thead>
+				<tr class="bg-hn-orange">
+					<th class="p-2 text-left text-sm font-semibold border border-gray-300">Link</th>
+					for _, field := range data.Fields {
+						<th
+							class="p-2 text-left text-sm font-semibold border border-gray-300 cursor-pointer hover:bg-orange-400 select-none"
+							hx-get={ "/objects/" + string(data.ObjectType) + "?sortField=" + field.Name + "&sortDir=" + toggleSortDir(data.SortField, data.SortDir, field.Name) }
+							hx-target="#object-table-container"
+							hx-include=".object-filter"
+						>
+							{ field.Label }
+							if data.SortField == field.Name {
+								if data.SortDir == "ASC" {
+									<span class="ml-1">↑</span>
+								} else {
+									<span class="ml-1">↓</span>
+								}
+							}
+						</th>
+					}
+				</tr>
+				<tr class="bg-gray-100">
+					<td class="p-1 border border-gray-300"></td>
+					for _, field := range data.Fields {
+						<td class="p-1 border border-gray-300">
+							<input
+								type="text"
+								name={ field.Name }
+								value={ data.Filters[field.Name] }
+								placeholder={ "Filter " + field.Label }
+								class="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+								hx-get={ "/objects/" + string(data.ObjectType) + "/rows" }
+								hx-trigger="keyup changed delay:300ms"
+								hx-target="#table-body"
+								hx-include="closest tr"
+							/>
+						</td>
+					}
+				</tr>
+			</thead>
+			<tbody id="table-body">
+				@ObjectRows(data)
+			</tbody>
+		</table>
+	</div>
+	@Pagination(data)
+}
+
+templ ObjectRows(data ObjectPageData) {
+	for _, record := range data.Records {
+		<tr class="hover:bg-gray-50 border-b border-gray-200">
+			<td class="p-2 border border-gray-300">
+				<a
+					href={ templ.SafeURL(fmt.Sprintf("%s/lightning/r/%s/%s/view", data.InstanceURL, data.ObjectType, getRecordID(record))) }
+					target="_blank"
+					class="text-blue-600 hover:underline"
+				>
+					Open
+				</a>
+			</td>
+			for _, field := range data.Fields {
+				<td class={ "p-2 border border-gray-300", templ.KV("whitespace-pre-wrap align-top", field.Multiline) }>
+					if field.Multiline {
+						<div class="max-h-60 overflow-y-auto text-sm">
+							@templ.Raw(linkifyURLs(getFieldValue(record, field.Name)))
+						</div>
+					} else {
+						{ getFieldValue(record, field.Name) }
+					}
+				</td>
+			}
+		</tr>
+	}
+	if len(data.Records) == 0 {
+		<tr>
+			<td colspan={ fmt.Sprint(len(data.Fields) + 1) } class="p-4 text-center text-gray-500">
+				No records found
+			</td>
+		</tr>
+	}
+}
+
+templ Pagination(data ObjectPageData) {
+	<div class="flex items-center justify-between mt-4">
+		<div class="text-sm text-gray-600">
+			Showing { fmt.Sprint(data.Page*data.PageSize + 1) } - { fmt.Sprint(min(data.Page*data.PageSize+len(data.Records), data.TotalSize)) } of { fmt.Sprint(data.TotalSize) }
+		</div>
+		<div class="flex gap-2">
+			if data.Page > 0 {
+				<button
+					class="px-3 py-1 bg-hn-orange text-black rounded hover:opacity-80"
+					hx-get={ fmt.Sprintf("/objects/%s?page=%d", data.ObjectType, data.Page-1) }
+					hx-target="#object-table-container"
+					hx-push-url="true"
+				>
+					Previous
+				</button>
+			}
+			if (data.Page+1)*data.PageSize < data.TotalSize {
+				<button
+					class="px-3 py-1 bg-hn-orange text-black rounded hover:opacity-80"
+					hx-get={ fmt.Sprintf("/objects/%s?page=%d", data.ObjectType, data.Page+1) }
+					hx-target="#object-table-container"
+					hx-push-url="true"
+				>
+					Next
+				</button>
+			}
+		</div>
+	</div>
+}
+
+func getRecordID(record map[string]any) string {
+	if id, ok := record["Id"].(string); ok {
+		return id
+	}
+	return ""
+}
+
+func getFieldValue(record map[string]any, fieldName string) string {
+	// Handle nested fields like Account.Name
+	parts := splitField(fieldName)
+	var current any = record
+
+	for _, part := range parts {
+		if m, ok := current.(map[string]any); ok {
+			current = m[part]
+		} else {
+			return ""
+		}
+	}
+
+	if current == nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%v", current)
+}
+
+func splitField(fieldName string) []string {
+	var result []string
+	current := ""
+	for _, c := range fieldName {
+		if c == '.' {
+			if current != "" {
+				result = append(result, current)
+				current = ""
+			}
+		} else {
+			current += string(c)
+		}
+	}
+	if current != "" {
+		result = append(result, current)
+	}
+	return result
+}
+
+func toggleSortDir(currentField, currentDir, clickedField string) string {
+	if currentField == clickedField {
+		if currentDir == "ASC" {
+			return "DESC"
+		}
+		return "ASC"
+	}
+	return "ASC"
+}
+
+var urlRegex = regexp.MustCompile(`(https?://[^\s<>"]+)`)
+
+func linkifyURLs(text string) string {
+	escaped := templ.EscapeString(text)
+	return urlRegex.ReplaceAllString(escaped, `<a href="$1" target="_blank" class="text-blue-600 hover:underline">$1</a>`)
+}
+
+func pluralize(name string) string {
+	if name == "Opportunity" {
+		return "Opportunities"
+	}
+	return name + "s"
+}

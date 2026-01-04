@@ -1,0 +1,290 @@
+package templates
+
+import (
+	"fmt"
+)
+
+var ActivitySubjects = []string{
+	"trial-signup",
+	"book-a-demo",
+	"contact-sales",
+	"newsletter-signup",
+}
+
+type ActivityRecord struct {
+	ID          string
+	CreatedDate string
+	Subject     string
+	FirstName   string
+	LastName    string
+	Email       string
+	Company     string
+}
+
+type ActivityPageData struct {
+	Records        []ActivityRecord
+	Page           int
+	PageSize       int
+	TotalSize      int
+	InstanceURL    string
+	ExcludeNuonCo  bool
+	NewLeadsOnly   bool
+	AllStatusTypes bool
+	CTAsOnly       bool
+	Filters        ActivityFilters
+}
+
+type ActivityFilters struct {
+	FirstName string
+	LastName  string
+	Email     string
+	Company   string
+	Subject   string
+}
+
+templ ActivityPage(data ActivityPageData) {
+	@Layout("Recent Activities") {
+		<div class="space-y-4">
+			<div class="flex items-center justify-between">
+				<h1 class="text-2xl font-bold">Recent Activities</h1>
+				<div class="flex items-center gap-4 flex-wrap">
+					<label class="flex items-center gap-2 text-sm">
+						<input
+							type="checkbox"
+							name="excludeNuonCo"
+							class="activity-filter"
+							if data.ExcludeNuonCo {
+								checked
+							}
+							hx-get="/activities"
+							hx-target="#activity-table-container"
+							hx-include=".activity-filter"
+						/>
+						Exclude nuon.co
+					</label>
+					<label class="flex items-center gap-2 text-sm">
+						<input
+							type="checkbox"
+							name="newLeadsOnly"
+							class="activity-filter"
+							if data.NewLeadsOnly {
+								checked
+							}
+							hx-get="/activities"
+							hx-target="#activity-table-container"
+							hx-include=".activity-filter"
+						/>
+						New Leads Only
+					</label>
+					<label class="flex items-center gap-2 text-sm">
+						<input
+							type="checkbox"
+							name="allStatusTypes"
+							class="activity-filter"
+							if data.AllStatusTypes {
+								checked
+							}
+							hx-get="/activities"
+							hx-target="#activity-table-container"
+							hx-include=".activity-filter"
+						/>
+						All Status Types
+					</label>
+					<label class="flex items-center gap-2 text-sm">
+						<input
+							type="checkbox"
+							name="ctasOnly"
+							class="activity-filter"
+							if data.CTAsOnly {
+								checked
+							}
+							hx-get="/activities"
+							hx-target="#activity-table-container"
+							hx-include=".activity-filter"
+						/>
+						CTAs
+					</label>
+					<button
+						class="px-3 py-1 bg-hn-orange text-black rounded hover:opacity-80"
+						hx-get="/activities"
+						hx-target="#activity-table-container"
+						hx-include=".activity-filter"
+					>
+						Refresh
+					</button>
+				</div>
+			</div>
+			if data.CTAsOnly {
+				<p class="text-sm text-gray-600">
+					Filtering to CTA subjects: { fmt.Sprintf("%v", ActivitySubjects) }
+				</p>
+			}
+			<div id="activity-table-container">
+				@ActivityTable(data)
+			</div>
+		</div>
+	}
+}
+
+templ ActivityTable(data ActivityPageData) {
+	<div class="overflow-x-auto">
+		<table class="w-full border-collapse bg-white">
+			<thead>
+				<tr class="bg-hn-orange">
+					<th class="p-2 text-left text-sm font-semibold border border-gray-300">Open</th>
+					<th class="p-2 text-left text-sm font-semibold border border-gray-300">Created (UTC)</th>
+					<th class="p-2 text-left text-sm font-semibold border border-gray-300">Subject</th>
+					<th class="p-2 text-left text-sm font-semibold border border-gray-300">First Name</th>
+					<th class="p-2 text-left text-sm font-semibold border border-gray-300">Last Name</th>
+					<th class="p-2 text-left text-sm font-semibold border border-gray-300">Email</th>
+					<th class="p-2 text-left text-sm font-semibold border border-gray-300">Company</th>
+				</tr>
+				<tr class="bg-gray-100">
+					<td class="p-1 border border-gray-300"></td>
+					<td class="p-1 border border-gray-300"></td>
+					<td class="p-1 border border-gray-300">
+						<input
+							type="text"
+							name="filterSubject"
+							value={ data.Filters.Subject }
+							placeholder="Filter"
+							class="w-full px-2 py-1 text-sm border border-gray-300 rounded activity-filter"
+							hx-get="/activities"
+							hx-trigger="keyup changed delay:500ms"
+							hx-target="#activity-table-container"
+							hx-include=".activity-filter"
+						/>
+					</td>
+					<td class="p-1 border border-gray-300">
+						<input
+							type="text"
+							name="filterFirstName"
+							value={ data.Filters.FirstName }
+							placeholder="Filter"
+							class="w-full px-2 py-1 text-sm border border-gray-300 rounded activity-filter"
+							hx-get="/activities"
+							hx-trigger="keyup changed delay:500ms"
+							hx-target="#activity-table-container"
+							hx-include=".activity-filter"
+						/>
+					</td>
+					<td class="p-1 border border-gray-300">
+						<input
+							type="text"
+							name="filterLastName"
+							value={ data.Filters.LastName }
+							placeholder="Filter"
+							class="w-full px-2 py-1 text-sm border border-gray-300 rounded activity-filter"
+							hx-get="/activities"
+							hx-trigger="keyup changed delay:500ms"
+							hx-target="#activity-table-container"
+							hx-include=".activity-filter"
+						/>
+					</td>
+					<td class="p-1 border border-gray-300">
+						<input
+							type="text"
+							name="filterEmail"
+							value={ data.Filters.Email }
+							placeholder="Filter"
+							class="w-full px-2 py-1 text-sm border border-gray-300 rounded activity-filter"
+							hx-get="/activities"
+							hx-trigger="keyup changed delay:500ms"
+							hx-target="#activity-table-container"
+							hx-include=".activity-filter"
+						/>
+					</td>
+					<td class="p-1 border border-gray-300">
+						<input
+							type="text"
+							name="filterCompany"
+							value={ data.Filters.Company }
+							placeholder="Filter"
+							class="w-full px-2 py-1 text-sm border border-gray-300 rounded activity-filter"
+							hx-get="/activities"
+							hx-trigger="keyup changed delay:500ms"
+							hx-target="#activity-table-container"
+							hx-include=".activity-filter"
+						/>
+					</td>
+				</tr>
+			</thead>
+			<tbody>
+				@ActivityRows(data)
+			</tbody>
+		</table>
+	</div>
+	@ActivityPagination(data)
+}
+
+templ ActivityRows(data ActivityPageData) {
+	for _, record := range data.Records {
+		<tr class="hover:bg-gray-50 border-b border-gray-200">
+			<td class="p-2 border border-gray-300">
+				<a
+					href={ templ.SafeURL(fmt.Sprintf("%s/lightning/r/Task/%s/view", data.InstanceURL, record.ID)) }
+					target="_blank"
+					class="text-blue-600 hover:underline"
+				>
+					Open
+				</a>
+			</td>
+			<td class="p-2 border border-gray-300">{ record.CreatedDate }</td>
+			<td class="p-2 border border-gray-300">{ record.Subject }</td>
+			<td class="p-2 border border-gray-300">{ record.FirstName }</td>
+			<td class="p-2 border border-gray-300">{ record.LastName }</td>
+			<td class="p-2 border border-gray-300">{ record.Email }</td>
+			<td class="p-2 border border-gray-300">{ record.Company }</td>
+		</tr>
+	}
+	if len(data.Records) == 0 {
+		<tr>
+			<td colspan="7" class="p-4 text-center text-gray-500">
+				No activities found
+			</td>
+		</tr>
+	}
+}
+
+templ ActivityPagination(data ActivityPageData) {
+	<div class="flex items-center justify-between mt-4">
+		<div class="text-sm text-gray-600">
+			if data.TotalSize > 0 {
+				Showing { fmt.Sprint(data.Page*data.PageSize + 1) } - { fmt.Sprint(min(data.Page*data.PageSize+len(data.Records), data.TotalSize)) } of { fmt.Sprint(data.TotalSize) }
+			} else {
+				No records
+			}
+		</div>
+		<div class="flex gap-2">
+			if data.Page > 0 {
+				<button
+					class="px-3 py-1 bg-hn-orange text-black rounded hover:opacity-80"
+					hx-get={ fmt.Sprintf("/activities?page=%d", data.Page-1) }
+					hx-target="#activity-table-container"
+					hx-include=".activity-filter"
+					hx-push-url="true"
+				>
+					Previous
+				</button>
+			}
+			if (data.Page+1)*data.PageSize < data.TotalSize {
+				<button
+					class="px-3 py-1 bg-hn-orange text-black rounded hover:opacity-80"
+					hx-get={ fmt.Sprintf("/activities?page=%d", data.Page+1) }
+					hx-target="#activity-table-container"
+					hx-include=".activity-filter"
+					hx-push-url="true"
+				>
+					Next
+				</button>
+			}
+		</div>
+	</div>
+}
+
+func boolToOnOff(b bool) string {
+	if b {
+		return "on"
+	}
+	return ""
+}

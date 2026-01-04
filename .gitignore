@@ -1,0 +1,33 @@
+# Environment
+.env
+
+# Go
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Templ generated
+*_templ.go
+
+# Tailwind
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+tmp/
+build-errors.log

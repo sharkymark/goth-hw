@@ -1,0 +1,10 @@
+{
+  "name": "goth-hw",
+  "scripts": {
+    "css": "npx tailwindcss -i ./static/input.css -o ./static/styles.css",
+    "css:watch": "npx tailwindcss -i ./static/input.css -o ./static/styles.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}
