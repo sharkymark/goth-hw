@@ -1,6 +1,9 @@
 # Environment
 .env
 
+# ai
+.claude/
+
 # Go
 bin/
 *.exe

@@ -6,12 +6,16 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/markmilligan/goth-hw/internal/config"
 	"github.com/markmilligan/goth-hw/internal/handlers"
 	"github.com/markmilligan/goth-hw/internal/salesforce"
 )
 
 func main() {
+	// Load .env file
+	godotenv.Load()
+
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
